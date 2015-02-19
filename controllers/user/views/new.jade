@@ -1,0 +1,30 @@
+h1 Nuevo Usuario
+
+form(method="POST", action="/api/user")
+
+  p Nombre:
+    input(type="text" name="name")
+
+  p Fecha de nacimiento:
+    input(type="date" name="birthdate")
+
+  p ¿Es administrador?:
+    input(type="checkbox" name="isAdmin")
+
+  p PushType:
+    input(type="text" name="pushType")
+
+  p PushId:
+    input(type="text" name="pushId")
+
+  p FacebookId:
+    input(type="text" name="facebookId")
+
+  p PhotoUrl:
+    input(type="text" name="photoUrl")
+
+  p Email:
+    input(type="text" name="email")
+
+  p
+    button(type="submit") Enviar
