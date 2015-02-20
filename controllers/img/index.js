@@ -14,15 +14,14 @@ var multipartMiddleware = multipart();
 var pathFullSizeImg=__base+'/uploads/fullsize/',
 pathThumbsImg= __base+'/uploads/thumbs/';
 
-
 app.set('views', __dirname + '/views');
 
 function showImage(req,res,pathType){
-  //validate if exits file
-  if(req.params!=null && req.params.img_name!=null){
-    console.log("show img Full: "+ req.params.img_name);
-    file = req.params.img_name;
 
+  if(req.params!=null && req.params.img_name!=null){
+    console.log("show img : "+ req.params.img_name);
+    file = req.params.img_name;
+    //validate if exits file
     fs.exists(pathType +file, function (exists){
       if(exists){
         //download image on client
@@ -37,32 +36,20 @@ function showImage(req,res,pathType){
         res.end('"/></body></html>');
       }
       else{
-        res.sendStatus(403);
+
+        res.sendStatus(404);
       }
     });
-    //
-    // var img = fs.readFileSync(pathFullSizeImg + file);//err?validate
-    // res.writeHead(200, {'Content-Type': 'image/*' });
-    // res.write(img, 'binary');
-    // res.end();
-    // fs.readFile(pathFullSizeImg +file, function(err, data) {
-    //   res.writeHead(200, {'Content-Type': 'text/html'});
-    //   fs.createReadStream(pathFullSizeImg +file).pipe(response);
-    //   res.write('<html><body><img src="data:image/*;base64,')
-    //   res.write(new Buffer(data).toString('base64'));
-    //   res.end('"/></body></html>');
-    // });
+
   }else{
     console.log("no image file ");
-    res.sendStatus(403);
+    //show 404 on client
+    res.sendStatus(404);
   };
 
 };
-
 function showImageFull(req,res){
-
   showImage(req,res,pathFullSizeImg);
-
 };
 function showAllImages(req,res){
   fs.exists(pathFullSizeImg, function (exists){
@@ -181,57 +168,81 @@ function saveLocalPhoto(FinalPath,OldPath,ImgName,req,res,sha1){
           res.sendStatus(403);
           return;
         };
-        resizeImg(FinalPath,pathThumbsImg+ImgName,256,256,res);
-        // im.resize({
-        //   srcPath: FinalPath,
-        //   dstPath: pathThumbsImg+ImgName,
-        //   width:   200
-        // }, function(err, stdout, stderr){
-        //   if (err){
-        //     console.log(err,stdout,stderr);
-        //     throw err;
-        //     res.sendStatus(403); return;
-        //   }
-        //
-        //   console.log('resized image to fit within 200x200px',stdout,stderr);
-        //
-        //   });
-        saveOnDbImgInfoUser(req,res,ImgName,sha1);
-
+        if(req.body!=null && req.body.user_id!=null && req.body.visible!=null){
+          resizeImg(FinalPath,pathThumbsImg+ImgName,256,256,res);
+          saveOnDbImgInfoUser(req,res,ImgName,sha1);
+        }else{
+          console.log("no atll data from user");
+          res.sendStatus(403);
+        }
       });
     });
   });
 };
 function resizeImg(src,dst,w,h,res){
   var option ={ srcData: src, width :   w, height: h};
-  console.log(option);
-  gm(src)
-  .resize(w, h)
-  .noProfile()
-  .write(dst, function (err) {
+  gm(src).resize(w, h).noProfile().write(dst, function (err) {
     if (!err) console.log('done');
   });
-}
+};
 function saveOnDbImgInfoUser(req,res,ImgName, sha1){
   if(req.body!=null && req.body.user_id!=null && req.body.visible!=null){
-    //validate if user exists?
-
-    var newImg= new db.Img({
-      file_name : ImgName,
-      user_id : req.body.user_id,
-      visible : req.body.visible=== 'true' ? true : false,
-      sha1 : sha1});
-      newImg.save(function(error,saved_img){
-        if(error){
-          console.log('Error saving Imga ON DB');
-          res.sendStatus(404);
+    //validate if user exists
+    var query  = db.User.where({ '_id': req.body.user_id });
+    query.findOne(function (err,user){
+      if(err){
+        console.log("user "+req.body.user_id+" not on DB");
+        console.log(err);
+        res.sendStatus(403);
+        return;
+      }
+      var img_query  = db.Img.where({ 'sha1': sha1, user_id : req.body.user_id});
+      img_query.findOne(function(err,img){
+        if(err){
+          console.log(err);
+          res.sendStatus(403);
+          return;
         }else{
-          res.json(saved_img);
-        }
-      });
-    };
+          if(img){
 
-  }
+            console.log(" ya tiene esta imagen en la DB update date");
+            //res.json(img);
+            var img_update_query =  { 'sha1': sha1, user_id : req.body.user_id};
+            db.Img.findOneAndUpdate(img_update_query,req.body,function(err,upImg){
+              if(err){
+                console.log(err);
+                res.json(img);
+                return;
+              }
+              console.log("img update OK");
+              res.json(upImg);
+            });
+
+          }else{
+            console.log("savging new img");
+            var newImg= new db.Img({ file_name : ImgName, user_id : req.body.user_id,
+              visible : req.body.visible=== 'true' ? true : false,
+              sha1 : sha1});
+              newImg.save(function(error,saved_img){
+                if(error){
+                  console.log('Error saving Imga ON DB');
+                  res.sendStatus(404);
+                }else{
+                  console.log("savging new img OK");
+                  res.json(saved_img);
+                }
+              });
+            }
+          }
+
+        });
+
+      });
+    }
+    else{
+      res.sendStatus(403);
+    }
+  };
   function uploadImg(req,res){
 
     if(req.files!=null &&req.files.img!=null){
@@ -245,11 +256,22 @@ function saveOnDbImgInfoUser(req,res,ImgName, sha1){
       res.sendStatus(403);
     }
   };
+  function getImgsByUser(req,res){
+    if(req.body!=null && req.body.user_id!=null){
+      var img_query  = db.Img.where({user_id : req.body.user_id});
+      img_query.find(function(err,imgs){
+        res.json(imgs);
+      });
+    }else{
+      res.sendStatus(403);
+    }
+  };
 
   app.get('/api/img/fullsize/:img_name',showImageFull);
   app.get('/api/img/thumbs/:img_name',showImageThumb);
   app.post('/api/img/upload',multipartMiddleware,uploadImg);
-  app.get('/images',showAllImages);
+  //app.get('/images',showAllImages);
   //app.get('/uploads/:img_name',showImageFull);
   app.get('/uploads/fullsize/:img_name',showImageFull);
   app.get('/uploads/thumbs/:img_name',showImageThumb);
+  app.post('/api/img/user',multipartMiddleware,getImgsByUser);
