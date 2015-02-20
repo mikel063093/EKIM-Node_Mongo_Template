@@ -23,7 +23,57 @@ function getAllUsers(req,res){
 
 function getInfoUserById(req,res){};
 
-function loginUser(req,res){};
+function UpdateUser(req,res){
+  var u= req.body;
+  if(u!=null && u.facebook_id!=null){
+    var query  = db.User.where({ 'facebook_id': req.body.facebook_id });
+    query.findOne(function (err,user){
+      if(err){
+        console.log("on find user err "+ err);
+        res.sendStatus(403);
+      }else{
+        if(user){
+          //update data user
+          var query = { 'facebook_id': req.body.facebook_id };
+          //  var update = new db.User(req.body);
+          console.log("uPdatingDB");
+          console.log(req.body);
+
+          // for (var name in update) {
+          //   console.log(name + ": " + update[name]);
+          // }
+          //console.log(update);
+          db.User.findOneAndUpdate(query,req.body,function(err,upUser){
+            if(upUser){
+              console.log(upUser);
+              res.json(upUser);
+            }else{
+              if(err){
+                console.log(err);
+                res.sendStatus(403);
+              }else{
+                res.sendStatus(403);
+              }
+            }
+          });
+        }else{
+            if(err){
+              console.log(err);
+              res.sendStatus(403);
+            }else{
+              res.sendStatus(403);
+            }
+        }
+      }
+    });
+
+  }else{
+    console.log("not all data on POST Uptade user");
+    res.sendStatus(403);
+
+  }
+
+};
 
 function SaveUserIfNotExist(req,res){
   var query  = db.User.where({ 'facebook_id': req.body.facebook_id });
@@ -39,7 +89,7 @@ function SaveUserIfNotExist(req,res){
         //if new data UPDATE
         res.json(user);
       }else{
-        console.log("No reuslt saving");
+        console.log("No User ON DB Saving New USER");
         var u= req.body;
 
         if(u!=null && u.name !=null && u.age!=null &&
@@ -54,9 +104,9 @@ function SaveUserIfNotExist(req,res){
       }
 
     });
-}
+  };
 
-function SaveUser(req,res){
+  function SaveUser(req,res){
     var newUser= new db.User(req.body);
     newUser.save(function(error,user){
       if(error){
@@ -67,9 +117,9 @@ function SaveUser(req,res){
       }
 
     });
- }
+  };
 
-function userRegiserLogin(req,res){
+  function userRegiserLogin(req,res){
     var u= req.body;
     if(u!=null && u.name !=null && u.age!=null &&
       u.email!=null  && u.photo_profile!=null && u.facebook_id!=null &&
@@ -84,10 +134,12 @@ function userRegiserLogin(req,res){
           res.sendStatus(403);
         }
       }
-}
+    };
 
-app.get('/api/user', getInfoUserById);
+    app.get('/api/user', getInfoUserById);
 
-app.get('/api/user/allusers',getAllUsers);
+    app.get('/api/user/allusers',getAllUsers);
 
-app.post('/api/user',multipartMiddleware,userRegiserLogin);
+    app.post('/api/user',multipartMiddleware,userRegiserLogin);
+
+    app.post('/api/user/update',multipartMiddleware,UpdateUser);
