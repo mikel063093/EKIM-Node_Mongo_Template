@@ -35,14 +35,8 @@ function UpdateUser(req,res){
         if(user){
           //update data user
           var query = { 'facebook_id': req.body.facebook_id };
-          //  var update = new db.User(req.body);
           console.log("uPdatingDB");
           console.log(req.body);
-
-          // for (var name in update) {
-          //   console.log(name + ": " + update[name]);
-          // }
-          //console.log(update);
           db.User.findOneAndUpdate(query,req.body,function(err,upUser){
             if(upUser){
               console.log(upUser);
@@ -57,12 +51,12 @@ function UpdateUser(req,res){
             }
           });
         }else{
-            if(err){
-              console.log(err);
-              res.sendStatus(403);
-            }else{
-              res.sendStatus(403);
-            }
+          if(err){
+            console.log(err);
+            res.sendStatus(403);
+          }else{
+            res.sendStatus(403);
+          }
         }
       }
     });
@@ -104,9 +98,9 @@ function SaveUserIfNotExist(req,res){
       }
 
     });
-  };
+};
 
-  function SaveUser(req,res){
+function SaveUser(req,res){
     var newUser= new db.User(req.body);
     newUser.save(function(error,user){
       if(error){
@@ -117,9 +111,9 @@ function SaveUserIfNotExist(req,res){
       }
 
     });
-  };
+};
 
-  function userRegiserLogin(req,res){
+function userRegiserLogin(req,res){
     var u= req.body;
     if(u!=null && u.name !=null && u.age!=null &&
       u.email!=null  && u.photo_profile!=null && u.facebook_id!=null &&
@@ -134,7 +128,7 @@ function SaveUserIfNotExist(req,res){
           res.sendStatus(403);
         }
       }
-    };
+};
 
     app.get('/api/user', getInfoUserById);
 
