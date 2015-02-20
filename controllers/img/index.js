@@ -24,16 +24,8 @@ function showImage(req,res,pathType){
     //validate if exits file
     fs.exists(pathType +file, function (exists){
       if(exists){
-        //download image on client
-        // res.writeHead(200, {'Content-Type': "image/*"});
-        // fs.createReadStream(pathFullSizeImg +file).pipe(res);
 
-        //show image on client
-        var img = fs.readFileSync(pathType + file);
-        res.writeHead(200, {'Content-Type': 'text/html'});
-        res.write('<html><body><img src="data:image/*;base64,');
-        res.write(new Buffer(img).toString('base64'));
-        res.end('"/></body></html>');
+        res.sendFile(pathType +file);
       }
       else{
 
@@ -60,30 +52,6 @@ function showAllImages(req,res){
         }
         else{
           var body="";
-          // files.forEach(function(file){
-          //   if(file==".DS_Store"){
-          //     console.log("ds.storage");
-          //   }else{
-          //     console.log({file : file});
-          //     fs.readFile(pathFullSizeImg+file,function (err,data){
-          //       if(err){console.log({err: err}); throw err; res.sendStatus(403); return;}
-          //       else{
-          //       //  console.log({data: data});
-          //         buf=  new Buffer(data).toString('base64');
-          //         //console.log({data: data, buffer : buf});
-          //         body+='<img src="data:image/*;base64,'+
-          //         buf+
-          //         '"/></body>';
-          //         console.log({body: body});
-          //         // res.write('<img src="data:image/*;base64,')
-          //         // res.write(new Buffer(data).toString('base64'));
-          //         // res.write('"/></body>');
-          //       }
-          //     });
-          //
-          //   }
-          // });
-          //res
 
           forEach(files, function(item, index) {
             if(item==".DS_Store"){
@@ -98,27 +66,12 @@ function showAllImages(req,res){
               buf+
               '"/></body>';
 
-              // fs.readFileSync(pathFullSizeImg+item,function (err,data){
-              //   if(err){console.log({err: err}); throw err; res.sendStatus(403); return;}
-              //   else{
-              //
-              //     //  console.log({data: data});
-              //     buf=  new Buffer(data).toString('base64');
-              //     //console.log({data: data, buffer : buf});
-              //     body='<img src="data:image/*;base64,'+
-              //     buf+
-              //     '"/></body>';
-              //     //  console.log({body: body});
-              //     // res.write('<img src="data:image/*;base64,')
-              //     // res.write(new Buffer(data).toString('base64'));
-              //     // res.write('"/></body>');
-              //   }
-              // });
+
 
             }
-            // Synchronous.
+
           });
-          //console.log({body: body});
+
           res.writeHead(200, {'Content-Type': 'text/html' });
           res.write(body);
           res.end();
@@ -242,7 +195,7 @@ function saveOnDbImgInfoUser(req,res,ImgName, sha1){
     else{
       res.sendStatus(403);
     }
-  };
+};
   function uploadImg(req,res){
 
     if(req.files!=null &&req.files.img!=null){
@@ -266,12 +219,49 @@ function saveOnDbImgInfoUser(req,res,ImgName, sha1){
       res.sendStatus(403);
     }
   };
+  function upDateImgByUser(req,res){
+    if(req.body!=null && req.body.user_id!=null && req.body.img_id!=null && req.body.visible!=null){
+      var img_query  = db.Img.where({user_id : req.body.user_id, '_id': req.body.img_id });
+      img_query.findOne(function(err,img){
+        if(err){
+          console.log("find one err");
+          res.sendStatus(403);
+          console.log(err);
+          return;
+        }else{
+          if(img){
+            console.log("imgInfo");
+            console.log(img);
+            var img_query_up = db.Img.where({ 'sha1': img.sha1, user_id : img.user_id});
+            db.Img.findOneAndUpdate(img_query_up,req.body,function(err,upImg){
+              if(err){
+                res.sendStatus(403);
+                console.log(err);
+                return;
+              }
+              console.log("imgUpdate");
+              res.json(upImg);
+            });
+          }else{
+            console.log("no img on user account or user no exist");
+            res.sendStatus(403);
+          }
+        }
+      });
+    }else{
+      console.log("not all data uptade/img");
+      res.sendStatus(403);
+    }
+  };
 
+  //render apiCLiente
   app.get('/api/img/fullsize/:img_name',showImageFull);
   app.get('/api/img/thumbs/:img_name',showImageThumb);
   app.post('/api/img/upload',multipartMiddleware,uploadImg);
   //app.get('/images',showAllImages);
   //app.get('/uploads/:img_name',showImageFull);
+  //render uploads for dev
   app.get('/uploads/fullsize/:img_name',showImageFull);
   app.get('/uploads/thumbs/:img_name',showImageThumb);
   app.post('/api/img/user',multipartMiddleware,getImgsByUser);
+  app.post('/api/img/update/',multipartMiddleware,upDateImgByUser);
